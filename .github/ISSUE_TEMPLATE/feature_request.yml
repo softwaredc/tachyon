@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a capability, not a bug
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please open an issue before writing code for anything non-trivial.
+        Concurrency design decisions are cheap to discuss here and expensive to
+        revert later.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve
+      description: |
+        Describe the situation, not the solution. "My consumers fall behind and
+        I cannot tell which partition" is more useful than "add a depth API".
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: API sketch is welcome, even rough.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: Workarounds, other libraries, or why an existing API does not fit.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Data path (publish / subscribe / loan)
+        - Crash safety / reaping
+        - Bindings (python / go / rust)
+        - Tooling (tyctl / tachyond)
+        - Build / CI / packaging
+        - Documentation
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints this must respect
+      options:
+        - label: Keeps zero third-party dependencies
+        - label: Does not lock the data path
+        - label: Does not break the shared-memory layout without bumping TACHYON_ABI_VERSION
+        - label: Works on both x86-64 and ARM64

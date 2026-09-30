@@ -1,0 +1,22 @@
+[package]
+name = "tachyon-sys"
+version = "1.0.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Raw FFI bindings to libtachyon, the zero-copy IPC library"
+repository = "https://github.com/softwaredc/tachyon"
+keywords = ["ipc", "shared-memory", "zero-copy", "ffi"]
+categories = ["external-ffi-bindings", "os"]
+
+[lib]
+name = "tachyon_sys"
+path = "src/lib.rs"
+
+[features]
+default = []
+# Build libtachyon from source with cc, so `cargo build` needs no system install.
+vendored = ["cc"]
+
+[build-dependencies]
+cc = { version = "1", optional = true }
+pkg-config = "0.3"

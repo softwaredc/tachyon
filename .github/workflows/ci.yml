@@ -1,0 +1,216 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gcc-13 release
+            cc: gcc
+            cflags: -O3 -Wall -Wextra -Werror
+          - name: gcc debug
+            cc: gcc
+            cflags: -O0 -g -Wall -Wextra
+          - name: clang-18 release
+            cc: clang-18
+            cflags: -O3 -Wall -Wextra -Werror
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang
+        if: matrix.cc == 'clang-18'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18
+
+      - name: Build
+        run: |
+          mkdir -p build
+          for f in src/*.c; do
+            ${{ matrix.cc }} -std=c11 ${{ matrix.cflags }} -fPIC \
+              -Iinclude -Isrc -c "$f" -o "build/$(basename "$f" .c).o"
+          done
+          ar rcs build/libtachyon.a build/*.o
+          ${{ matrix.cc }} -shared -o build/libtachyon.so build/*.o -lpthread -lrt
+
+      - name: Build tests and examples
+        run: |
+          for t in test_basic test_crash test_chaos test_stress; do
+            ${{ matrix.cc }} -std=c11 ${{ matrix.cflags }} -Iinclude -Isrc \
+              tests/$t.c build/libtachyon.a -o build/$t -lpthread -lrt
+          done
+          for e in examples/*.c; do
+            ${{ matrix.cc }} -std=c11 ${{ matrix.cflags }} -Iinclude -Isrc \
+              "$e" build/libtachyon.a -o "build/$(basename "$e" .c)" -lpthread -lrt
+          done
+
+      - name: Run example
+        run: ./build/hello_ipc
+
+      - name: Example assertions (key ordering, crash recovery)
+        run: |
+          ./build/key_ordering
+          ./build/crash_recovery
+
+      - name: Unit tests
+        run: ./build/test_basic
+
+      - name: Crash recovery
+        run: ./build/test_crash
+
+      - name: Stress (MPMC)
+        run: ./build/test_stress
+
+      - name: Chaos (SIGKILL rounds)
+        run: ./build/test_chaos 200
+
+  sanitizers:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ASan + UBSan
+            flags: -fsanitize=address,undefined -fno-omit-frame-pointer
+            test: test_basic
+          - name: ThreadSanitizer
+            flags: -fsanitize=thread -fno-omit-frame-pointer
+            test: test_stress
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build with sanitizer
+        run: |
+          mkdir -p build
+          gcc -std=c11 -O1 -g ${{ matrix.flags }} -Iinclude -Isrc \
+            src/*.c tests/${{ matrix.test }}.c -o build/${{ matrix.test }} \
+            -lpthread -lrt
+
+      - name: Run
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          TSAN_OPTIONS: second_deadlock_stack=1
+        run: ./build/${{ matrix.test }}
+
+  python:
+    name: python binding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build shared library
+        run: |
+          mkdir -p build
+          for f in src/*.c; do
+            gcc -std=c11 -O2 -fPIC -Iinclude -Isrc -c "$f" -o "build/$(basename "$f" .c).o"
+          done
+          gcc -shared -o build/libtachyon.so build/*.o -lpthread -lrt
+
+      - name: Run binding smoke test
+        env:
+          TACHYON_LIB: ${{ github.workspace }}/build/libtachyon.so
+          PYTHONPATH: ${{ github.workspace }}/bindings/python
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          sys.path.insert(0, os.environ["PYTHONPATH"])
+          import tachyon
+
+          tachyon.Region.remove("ci_demo")
+          reg = tachyon.Region("ci_demo", create=True, size=32 << 20)
+          topic = reg.topic("t", partitions=4, capacity=128, pool_bytes=4 << 20)
+          topic.send(b"hello from CI", key=1)
+
+          msg = topic.receive(partition=topic.route(1), timeout_ns=2_000_000_000)
+          assert msg is not None, "no message received"
+          assert bytes(msg.data) == b"hello from CI", bytes(msg.data)
+          msg.release()
+
+          pid = os.fork()
+          if pid == 0:
+              r = tachyon.Region("ci_demo", create=False)
+              t = r.topic("t")
+              m = t.receive(partition=t.route(99), timeout_ns=500_000_000)
+              os._exit(0 if m is None else 1)
+          _, st = os.waitpid(pid, 0)
+          assert os.WEXITSTATUS(st) == 0, "child exit"
+
+          reg.close()
+          tachyon.Region.remove("ci_demo")
+          print("python binding OK")
+          PY
+
+      - name: Run Python examples
+        env:
+          TACHYON_LIB: ${{ github.workspace }}/build/libtachyon.so
+          PYTHONPATH: ${{ github.workspace }}/bindings/python
+        run: |
+          python3 examples/python/zero_copy.py
+          python3 examples/python/pubsub.py
+
+  go:
+    name: go binding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install the C library
+        run: |
+          sudo mkdir -p /usr/local/include/tachyon
+          sudo cp include/tachyon/tachyon.h /usr/local/include/tachyon/
+          mkdir -p build
+          for f in src/*.c; do
+            gcc -std=c11 -O2 -fPIC -Iinclude -Isrc -c "$f" -o "build/$(basename "$f" .c).o"
+          done
+          sudo gcc -shared -o /usr/local/lib/libtachyon.so build/*.o -lpthread -lrt
+          sudo ldconfig
+
+      - name: Build and vet the binding
+        working-directory: bindings/go
+        run: |
+          go build ./...
+          go vet ./...
+
+      - name: Run the example
+        working-directory: examples/go
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+        run: go run main.go
+
+  benchmarks:
+    name: benchmarks (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          mkdir -p build
+          for f in src/*.c; do
+            gcc -std=c11 -O3 -fPIC -Iinclude -Isrc -c "$f" -o "build/$(basename "$f" .c).o"
+          done
+          ar rcs build/libtachyon.a build/*.o
+          gcc -std=c11 -O3 -Iinclude -Isrc benchmarks/bench_ipc.c \
+            build/libtachyon.a -o build/bench_ipc -lpthread -lrt
+      - name: Run latency and throughput
+        run: |
+          TY_NOTIFY=spin ./build/bench_ipc tachyon latency 256 20000 || true
+          ./build/bench_ipc pipe latency 256 20000 || true
+          TY_NOTIFY=spin ./build/bench_ipc tachyon throughput 1024 100000 || true
+          ./build/bench_ipc pipe throughput 1024 100000 || true

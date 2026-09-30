@@ -1,0 +1,90 @@
+name: Bug report
+description: Something is wrong, slow, or lost a message
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. For concurrency bugs, the more of this you
+        can fill in, the faster it gets fixed — these bugs often reproduce once
+        in several hundred thousand messages, so "it happened" is rarely enough
+        to act on.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Observed behaviour, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproducer
+      description: The smallest program that shows it. C, Python, or Go.
+      render: c
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: tachyon version / commit
+    validations:
+      required: true
+
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel and CPU
+      description: 'Output of `uname -a` and `grep -m1 "model name" /proc/cpuinfo`'
+    validations:
+      required: true
+
+  - type: input
+    id: compiler
+    attributes:
+      label: Compiler and flags
+      placeholder: gcc 13.3.0, -O3
+    validations:
+      required: true
+
+  - type: select
+    id: optlevel
+    attributes:
+      label: Does it reproduce at every optimisation level?
+      options:
+        - Yes, all of -O0/-O2/-O3
+        - Only at -O2 or higher
+        - Only at -O0 (debug)
+        - I have not tried
+    validations:
+      required: true
+
+  - type: select
+    id: san
+    attributes:
+      label: What do the sanitizers say?
+      options:
+        - ASan/UBSan clean, TSan clean
+        - ASan or UBSan reports something (paste below)
+        - TSan reports a data race (paste below)
+        - I have not run them
+    validations:
+      required: true
+
+  - type: textarea
+    id: stats
+    attributes:
+      label: ty_topic_stats() output
+      description: |
+        published / consumed / dropped / loan_nomem / reclaimed. For lost or
+        hung messages this narrows things down faster than anything else.
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitizer output, backtrace, or anything else
+      render: shell

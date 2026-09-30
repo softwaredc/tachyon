@@ -1,0 +1,18 @@
+[package]
+name = "tachyon"
+version = "1.0.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Zero-copy inter-process communication over shared memory"
+repository = "https://github.com/softwaredc/tachyon"
+keywords = ["ipc", "shared-memory", "zero-copy", "ring-buffer"]
+categories = ["os", "network-programming"]
+readme = "../../../README.md"
+
+[dependencies]
+tachyon-sys = { path = "../tachyon-sys", version = "1.0.0" }
+
+[features]
+default = []
+# Build the C library from source instead of linking a system install.
+vendored = ["tachyon-sys/vendored"]

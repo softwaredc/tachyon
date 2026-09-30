@@ -1,0 +1,43 @@
+# Build outputs
+build/
+build-*/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+
+# Benchmark artefacts
+results.txt
+benchmarks/*.json
+
+# Shared memory leftovers from local runs (never commit these)
+/dev/shm/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+dist/
+
+# Rust
+target/
+Cargo.lock
+
+# Go
+*.test

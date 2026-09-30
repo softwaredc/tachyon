@@ -1,0 +1,37 @@
+# Formatting for tachyon. Run clang-format on files you touch, not on the whole
+# tree -- a repo-wide reformat buries the actual change in a diff.
+#
+#   clang-format -i src/topic.c
+#
+# The 100-column limit is soft: the header structs are laid out to be read as
+# tables, and breaking those up would make them worse.
+
+Language: Cpp
+BasedOnStyle: LLVM
+
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+
+# Keep the short form of control statements on one line: `if (!p) return;`
+# reads better than a three-line version in error paths.
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+
+# Comments must not be reflowed: several of them are deliberately formatted as
+# ASCII tables or protocol diagrams and reflowing destroys them.
+ReflowComments: false
+
+BreakBeforeBraces: Attach
+IndentCaseLabels: true
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignTrailingComments: true
+PointerAlignment: Right
+SpaceAfterCStyleCast: false
+SpacesBeforeTrailingComments: 2
+SortIncludes: false
