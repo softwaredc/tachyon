@@ -244,13 +244,7 @@ scripts/                    基准与混沌驱动
 
 ## 文档
 
-- [设计](docs/DESIGN.md) · [设计（中文）](docs/DESIGN_CN.md)
 - [API](docs/API.md) · [API（中文）](docs/API_CN.md)
-- [基准测试](docs/BENCHMARK.md) · [基准测试（中文）](docs/BENCHMARK_CN.md)
-- [崩溃安全](docs/CRASH-SAFETY.md) · [崩溃安全（中文）](docs/CRASH-SAFETY_CN.md)
-- [发布到 GitHub](docs/PUBLISHING.md) · [发布步骤（中文）](docs/PUBLISHING_CN.md)
-- [怎么拿 Star](docs/GETTING-STARS.md) · [涨星策略（中文）](docs/GETTING-STARS_CN.md)
-- [长文：原理与坑](docs/articles/zero-copy-ipc-en.md) · [同名长文（中文）](docs/articles/wechat-zero-copy-ipc.md)
 
 ## 贡献
 
